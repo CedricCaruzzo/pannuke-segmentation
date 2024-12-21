@@ -104,6 +104,7 @@ def check_accuracy(loader, model, device="cuda"):
     }
         
 def save_predictions_as_imgs(loader, model, epoch, mod=50, folder='results/', device='cuda'):
+    print('Saving predictions as images ...')
     model.eval()
     for idx, (x, y) in enumerate(loader):
         if idx%mod == 0:
@@ -113,20 +114,6 @@ def save_predictions_as_imgs(loader, model, epoch, mod=50, folder='results/', de
                 preds = torch.sigmoid(model(x))
                 preds = (preds > 0.5).float()
             
-            # Create colored masks where each class has a different intensity
-            colored_preds = torch.zeros((1, 1, 256, 256), device=device)
-            colored_truth = torch.zeros((1, 1, 256, 256), device=device)
-            
-            # Assign different intensities for each class
-            for class_idx in range(6):
-                colored_preds += (preds[:, class_idx:class_idx+1] * (class_idx + 1) / 6)
-                colored_truth += (y[:, class_idx:class_idx+1] * (class_idx + 1) / 6)
-            
-            # Ensure values are in [0, 1] range
-            colored_preds = torch.clamp(colored_preds, 0, 1)
-            colored_truth = torch.clamp(colored_truth, 0, 1)
-            
-            
             def make_folder(path):
                 # Check if the folder exists, and if not, create it
                 if not os.path.exists(path):
@@ -135,9 +122,11 @@ def save_predictions_as_imgs(loader, model, epoch, mod=50, folder='results/', de
             
             # Save images
             make_folder(f"{folder}pred/epoch_{epoch}/")
-            torchvision.utils.save_image(colored_preds, f"{folder}pred/epoch_{epoch}/pred_{idx}.jpg")
+            torchvision.utils.save_image(preds, f"{folder}pred/epoch_{epoch}/pred_{idx}.jpg")
             make_folder(f"{folder}true/epoch_{epoch}/")
-            torchvision.utils.save_image(colored_truth, f"{folder}true/epoch_{epoch}/true_{idx}.jpg")
+            torchvision.utils.save_image(y, f"{folder}true/epoch_{epoch}/true_{idx}.jpg")
+            make_folder(f"{folder}image/epoch_{epoch}/")
+            torchvision.utils.save_image(x, f"{folder}image/epoch_{epoch}/image{idx}.jpg")
             
 def test():
     from src.datasets.dataset import PanNukeDataset

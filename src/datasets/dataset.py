@@ -27,37 +27,40 @@ class PanNukeDataset(Dataset):
 
     def __getitem__(self, idx):
         image = self.images[idx].copy()
-        masks = self.masks[idx].copy()
+        mask = self.masks[idx].copy()
         
         # Binary mask for segmentation
-        masks = np.clip(masks, 0, 1)
+        collapsed_array = np.max(mask, axis=2)
+        binary_array = np.where(collapsed_array > 1, 1, 0)
+        mask = binary_array
         
         # Normalize image to [0, 1] range and ensure float32
         image = (image / 255).astype(np.float32)
-        masks = masks.astype(np.float32)
+        mask = mask.astype(np.float32)
         
         if self.transform:
             # Apply transforms with named arguments
-            transformed = self.transform(image=image, mask=masks)
+            transformed = self.transform(image=image, mask=mask)
             image = transformed["image"]
-            masks = transformed["mask"]
-            masks = masks.permute(2, 0, 1)
+            mask = transformed["mask"].unsqueeze(0)
+            
         else:
             # Convert to torch tensors if no transform
             image = torch.from_numpy(image).permute(2, 0, 1)
-            masks = torch.from_numpy(masks).permute(2, 0, 1)
-        
+            mask = torch.from_numpy(mask).unsqueeze(0)
         # Ensure float32 type for tensors
         image = image.float()
-        masks = masks.float()
+        mask = mask.float()
             
-        return image, masks
+        return image, mask
     
 def test():
     from torch.utils.data import DataLoader
     
     import albumentations as A
     from albumentations.pytorch import ToTensorV2
+
+    import matplotlib.pyplot as plt
     
     train_transform = A.Compose(
         [
@@ -68,7 +71,7 @@ def test():
         ]
     )
     
-    dataset = PanNukeDataset(root_dir='data/raw/folds', fold=1, transform=train_transform)
+    dataset = PanNukeDataset(root_dir='data/raw/folds', fold=1, transform=None)
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
     
     for i, (image, mask) in enumerate(dataloader):
@@ -79,17 +82,25 @@ def test():
         print(f'Mask input shape: {mask.shape}')
         print(f'Mask input type: {mask.dtype}')
         print(f'Mask input min: {mask.min()}\tMask input max: {mask.max()}')
+
+        plt.imshow(image.squeeze(0).permute(1, 2, 0), cmap='gray')
+        plt.show()
+
+        plt.imshow(mask.squeeze(0).permute(1, 2, 0), cmap='gray')
+        plt.show()
         
         break
     
     from src.models.UNet import UNet
     
-    model = UNet(in_channels=3, out_channels=6)
+    model = UNet(in_channels=3, out_channels=1)
     model = model.float()  # Ensure model is in float32
     preds = model(image)
     print(f"Input shape: {image.shape}")
     print(f"Output shape: {preds.shape}")
     assert preds.shape[2:] == image.shape[2:]
+    plt.imshow(mask, cmap='gray')
+    plt.show()
     
 if __name__ == '__main__':
     test()
