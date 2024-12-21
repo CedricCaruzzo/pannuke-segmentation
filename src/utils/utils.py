@@ -81,7 +81,7 @@ def check_accuracy(loader, model, device="cuda"):
     print("Class\t\tDice\t\tIoU\t\tPrecision\tRecall")
     print("-" * 65)
     
-    class_names = ['Class_1', 'Class_2', 'Class_3', 'Class_4', 'Class_5', 'Class_6']  # Replace with your actual class names
+    class_names = ['Class_1', 'Class_2', 'Class_3', 'Class_4', 'Class_5', 'Class_6']
     
     for i in range(6):
         print(f"{class_names[i]:<12} {dice_scores[i]:.4f}\t{ious[i]:.4f}\t{precisions[i]:.4f}\t{recalls[i]:.4f}")
