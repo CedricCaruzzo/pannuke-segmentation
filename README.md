@@ -70,8 +70,8 @@ The architecture remains highly interpretable and effective for biomedical image
 
 Clone the repository:
 ```bash
-git clone https://github.com/your-username/unet-histopathology.git
-cd unet-histopathology
+git clone https://github.com/CedricCaruzzo/pannuke-segmentation/.git
+cd pannuke-segmentation
 ```
 
 Create a virtual environment and install dependencies:
