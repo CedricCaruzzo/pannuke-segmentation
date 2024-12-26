@@ -5,7 +5,7 @@ from tqdm import tqdm
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from src.models.UNet import UNet
+from src.models.UNetpp import UNetPlusPlus  # Updated import
 from src.datasets.dataset import PanNukeDataset
 from src.utils.utils import save_checkpoint, load_checkpoint, check_accuracy, save_predictions_as_imgs
 from torch.utils.data import DataLoader
@@ -17,27 +17,28 @@ class DiceLoss(nn.Module):
         self.weight = weight
 
     def forward(self, predictions, targets):
-        # Input shapes: B x C x H x W
-        batch_size = predictions.size(0)
-        
-        # Apply log_softmax for numerical stability
-        pred_probs = F.softmax(predictions, dim=1)
-        
-        # Calculate Dice score for each sample and class
-        intersection = (pred_probs * targets).sum(dim=(0, 2, 3))
-        union = pred_probs.sum(dim=(0, 2, 3)) + targets.sum(dim=(0, 2, 3))
-        
-        # Calculate Dice score
-        dice_score = (2. * intersection + self.smooth) / (union + self.smooth)
-        
-        # Apply class weights if provided
-        if self.weight is not None:
-            dice_score = dice_score * self.weight.to(dice_score.device)
-        
-        # Average over classes
-        dice_loss = 1 - dice_score.mean()
-        
-        return dice_loss
+        # Handle both single predictions and deep supervision outputs
+        if isinstance(predictions, list):
+            total_loss = 0
+            # Calculate loss for each deep supervision output
+            for pred in predictions:
+                pred_probs = F.softmax(pred, dim=1)
+                intersection = (pred_probs * targets).sum(dim=(0, 2, 3))
+                union = pred_probs.sum(dim=(0, 2, 3)) + targets.sum(dim=(0, 2, 3))
+                dice_score = (2. * intersection + self.smooth) / (union + self.smooth)
+                if self.weight is not None:
+                    dice_score = dice_score * self.weight.to(dice_score.device)
+                total_loss += (1 - dice_score.mean())
+            return total_loss / len(predictions)
+        else:
+            # Original single prediction logic
+            pred_probs = F.softmax(predictions, dim=1)
+            intersection = (pred_probs * targets).sum(dim=(0, 2, 3))
+            union = pred_probs.sum(dim=(0, 2, 3)) + targets.sum(dim=(0, 2, 3))
+            dice_score = (2. * intersection + self.smooth) / (union + self.smooth)
+            if self.weight is not None:
+                dice_score = dice_score * self.weight.to(dice_score.device)
+            return 1 - dice_score.mean()
 
 class CombinedLoss(nn.Module):
     def __init__(self, weight=None, alpha=0.5):
@@ -47,14 +48,20 @@ class CombinedLoss(nn.Module):
         self.dice = DiceLoss(weight=weight)
 
     def forward(self, predictions, targets):
-        BCE_loss = self.BCE(predictions, targets)
-        dice_loss = self.dice(predictions, targets)
+        if isinstance(predictions, list):
+            # Handle deep supervision outputs
+            bce_loss = sum(self.BCE(pred, targets) for pred in predictions) / len(predictions)
+            dice_loss = self.dice(predictions, targets)
+        else:
+            # Handle single prediction
+            bce_loss = self.BCE(predictions, targets)
+            dice_loss = self.dice(predictions, targets)
         
-        return self.alpha * BCE_loss + (1 - self.alpha) * dice_loss
+        return self.alpha * bce_loss + (1 - self.alpha) * dice_loss
 
 LEARNING_RATE = 1e-4
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-BATCH_SIZE = 16
+BATCH_SIZE = 8
 NUM_EPOCHS = 10
 IMAGE_HEIGHT = 256
 IMAGE_WIDTH = 256
@@ -62,6 +69,7 @@ LOAD_MODEL = False
 ROOT_DIR = 'data/raw/folds'
 TRAIN_FOLD = 1
 VAL_FOLD = 2
+DEEP_SUPERVISION = True  # New parameter for UNet++
 
 def train_fn(loader, model, optimizer, loss_fn, scaler):
     loop = tqdm(loader)
@@ -71,8 +79,8 @@ def train_fn(loader, model, optimizer, loss_fn, scaler):
         mask = mask.float().to(DEVICE)
         
         with torch.cuda.amp.autocast():
-            prediction = model(data)
-            loss = loss_fn(prediction, mask)
+            predictions = model(data)  # May return list of predictions with deep supervision
+            loss = loss_fn(predictions, mask)
             
         optimizer.zero_grad()
         scaler.scale(loss).backward()
@@ -93,10 +101,20 @@ def main():
     )
     
     if LOAD_MODEL:
-        model = UNet(in_channels=3, out_channels=1).to(DEVICE)
+        model = UNetPlusPlus(
+            in_channels=3, 
+            out_channels=1,
+            features=[64, 128, 256, 512],
+            deep_supervision=DEEP_SUPERVISION
+        ).to(DEVICE)
         load_checkpoint('checkpoints/checkpoint.pth', model)
     else:
-        model = UNet(in_channels=3, out_channels=1).to(DEVICE)
+        model = UNetPlusPlus(
+            in_channels=3, 
+            out_channels=1,
+            features=[64, 128, 256, 512],
+            deep_supervision=DEEP_SUPERVISION
+        ).to(DEVICE)
     
     optimizer = optim.AdamW(
         model.parameters(),
@@ -124,7 +142,8 @@ def main():
         
         # check_accuracy(val_dataloader, model, device=DEVICE)
         
-        save_predictions_as_imgs(val_dataloader, model, epoch=epoch, folder='results/', device=DEVICE)
+        # During validation/testing, we only use the final output
+        save_predictions_as_imgs(val_dataloader, model, epoch=epoch, folder='results/UNet++/', device=DEVICE)
 
 if __name__ == '__main__':
     main()

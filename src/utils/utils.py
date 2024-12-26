@@ -107,18 +107,23 @@ def save_predictions_as_imgs(loader, model, epoch, mod=50, folder='results/', de
     print('Saving predictions as images ...')
     model.eval()
     for idx, (x, y) in enumerate(loader):
-        if idx%mod == 0:
+        if idx % mod == 0:
             x = x.to(device=device)
             y = y.to(device=device)
             with torch.no_grad():
-                preds = torch.sigmoid(model(x))
+                output = model(x)
+                # Handle both deep supervision and single output cases
+                if isinstance(output, list):
+                    # Take the final output (most refined prediction)
+                    preds = torch.sigmoid(output[-1])
+                else:
+                    preds = torch.sigmoid(output)
                 preds = (preds > 0.5).float()
             
             def make_folder(path):
                 # Check if the folder exists, and if not, create it
                 if not os.path.exists(path):
                     os.makedirs(path)
-
             
             # Save images
             make_folder(f"{folder}pred/epoch_{epoch}/")

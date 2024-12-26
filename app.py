@@ -11,6 +11,7 @@ import torch
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from src.models.UNet import UNet
+from src.models.UNetpp import UNetPlusPlus
 from src.utils.utils import load_checkpoint
 
 # Set device
@@ -20,6 +21,25 @@ DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 IMAGE_HEIGHT = 256
 IMAGE_WIDTH = 256
 DATA_DIR = "./data/processed"
+
+# Model configurations
+MODEL_CONFIGS = {
+    "UNet": {
+        "class": UNet,
+        "checkpoint_dir": "checkpoints/UNet/",
+        "params": {"in_channels": 3, "out_channels": 1}
+    },
+    "UNet++": {
+        "class": UNetPlusPlus,
+        "checkpoint_dir": "checkpoints/UNet++/",
+        "params": {
+            "in_channels": 3, 
+            "out_channels": 1,
+            "features": [64, 128, 256, 512],
+            "deep_supervision": False  # Set to False for inference
+        }
+    }
+}
 
 # Get tissue types
 tissue_types = [d for d in os.listdir(DATA_DIR) if os.path.isdir(os.path.join(DATA_DIR, d))]
@@ -37,11 +57,18 @@ COLORMAP = ListedColormap(["black", "red", "blue", "green", "yellow", "purple"])
 
 # Initialize model
 @st.cache_resource
-def load_model(checkpoint_path):
-    model = UNet(in_channels=3, out_channels=1).to(DEVICE)
+def load_model(model_name, checkpoint_path):
+    model_config = MODEL_CONFIGS[model_name]
+    model = model_config["class"](**model_config["params"]).to(DEVICE)
     load_checkpoint(checkpoint_path, model)
     model.eval()
     return model
+
+def get_available_checkpoints(model_name):
+    checkpoint_dir = MODEL_CONFIGS[model_name]["checkpoint_dir"]
+    if not os.path.exists(checkpoint_dir):
+        return []
+    return [f for f in os.listdir(checkpoint_dir) if f.endswith('.pth')]
 
 # Image preprocessing for model
 def preprocess_image(image):
@@ -63,12 +90,17 @@ def preprocess_image(image):
     
     return image.unsqueeze(0)
 
-def get_model_prediction(model, image):
+def get_model_prediction(model, image, model_name):
     with torch.no_grad():
         image = image.to(DEVICE)
-        preds = torch.sigmoid(model(image))
+        output = model(image)
+        
+        # Handle UNet++ deep supervision output if present
+        if isinstance(output, list):
+            output = output[-1]  # Take final output for UNet++
+            
+        preds = torch.sigmoid(output)
         preds = (preds > 0.5).float()
-
         return preds.cpu().numpy().squeeze()
 
 def overlay_prediction(image, pred_mask, alpha=0.5):
@@ -160,22 +192,31 @@ def create_interactive_image(image, mask):
     return fig
 
 # Streamlit app
-st.title("PanNuke Dataset Explorer with UNet Segmentation")
+st.title("PanNuke Dataset Explorer with Deep Learning Segmentation")
 st.sidebar.header("Navigation")
 
-# Model checkpoint selection
-checkpoint_path = st.sidebar.text_input(
-    "Model Checkpoint Path",
-    value="checkpoints/checkpoint.pth"
-)
+# Model selection
+model_name = st.sidebar.selectbox("Select Model Architecture", list(MODEL_CONFIGS.keys()))
+
+# Get available checkpoints for selected model
+available_checkpoints = get_available_checkpoints(model_name)
+if available_checkpoints:
+    checkpoint_filename = st.sidebar.selectbox(
+        f"Select {model_name} Checkpoint",
+        available_checkpoints
+    )
+    checkpoint_path = os.path.join(MODEL_CONFIGS[model_name]["checkpoint_dir"], checkpoint_filename)
+else:
+    st.sidebar.warning(f"No checkpoints found for {model_name}. Please ensure checkpoints are in the correct directory.")
+    checkpoint_path = None
 
 # Load model if checkpoint exists
 model = None
-if os.path.exists(checkpoint_path):
-    model = load_model(checkpoint_path)
-    st.sidebar.success("Model loaded successfully!")
+if checkpoint_path and os.path.exists(checkpoint_path):
+    model = load_model(model_name, checkpoint_path)
+    st.sidebar.success(f"{model_name} loaded successfully!")
 else:
-    st.sidebar.warning("Model checkpoint not found. Please provide a valid path.")
+    st.sidebar.warning("Model checkpoint not found. Please provide a valid checkpoint.")
 
 # Select tissue type
 tissue_type = st.sidebar.selectbox("Select Tissue Type", tissue_types)
@@ -216,12 +257,12 @@ if visualization_mode == "Single Image":
             st.image(overlay, use_container_width=True)
         
         with col2:
-            st.subheader("UNet Segmentation")
+            st.subheader(f"{model_name} Segmentation")
             pred_alpha = st.slider("Prediction Overlay Transparency", 0.0, 1.0, 0.5)
             
             # Get model prediction
             preprocessed_image = preprocess_image(image)
-            prediction = get_model_prediction(model, preprocessed_image)
+            prediction = get_model_prediction(model, preprocessed_image, model_name)
             
             # Display prediction overlay
             pred_overlay = overlay_prediction(image, prediction, alpha=pred_alpha)
@@ -259,7 +300,7 @@ elif visualization_mode == "Multiple Images":
                     
                     if model is not None:
                         preprocessed_image = preprocess_image(image)
-                        prediction = get_model_prediction(model, preprocessed_image)
+                        prediction = get_model_prediction(model, preprocessed_image, model_name)
                         pred_overlay = overlay_prediction(image, prediction, alpha=overlay_alpha)
                         st.image(pred_overlay, caption=f"File: {image_files[idx]} (UNet)", use_container_width=True)
                     else:
