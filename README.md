@@ -47,6 +47,10 @@ Key Details:
 - Includes images, masks (6-channel instance-wise masks for nuclei types), and tissue type annotations
 - Unified nuclei categorization schema (e.g., Neoplastic, Inflammatory, Connective/Soft Tissue Cells, Dead Cells, Epithelial, Background)
 
+[dataset](https://warwick.ac.uk/fac/cross_fac/tia/data/pannuke)
+
+[preprocess](https://github.com/Mr-TalhaIlyas/Prerpcessing-PanNuke-Nuclei-Instance-Segmentation-Dataset/blob/master/scripts/process_pannuke.py)
+
 ## Installation
 
 Clone the repository:
