@@ -1,19 +1,13 @@
 # UNet for Histopathology Image Segmentation
 
-
-![app demonstration](https://github.com/user-attachments/assets/2e430457-0c06-461a-ae21-e436d1c9a887)
-
-This repository contains a project focused on segmentation in histopathology using a modified UNet architecture. The primary dataset used is the PanNuke dataset. The project includes both a training pipeline and a web application for easy exploration and inference on the dataset.
+![app demonstration Update](https://github.com/user-attachments/assets/f454dbf8-4cdf-4a47-96fa-e81bd7c9f3ae)
 
 ## Table of Contents
 - [Introduction](#introduction)
 - [Features](#features)
 - [Dataset](#dataset)
-- [Model Architecture](#model-architecture)
 - [Installation](#installation)
 - [Usage](#usage)
-  - [Training](#training)
-  - [Inference](#inference)
   - [Web Application](#web-application)
 - [Future Plans](#future-plans)
 - [References](#references)
@@ -21,18 +15,15 @@ This repository contains a project focused on segmentation in histopathology usi
 
 ## Introduction
 
-This project implements a segmentation pipeline for histopathological images using a modified version of the UNet architecture, inspired by the original paper:
-
-> Ronneberger, O., Fischer, P., & Brox, T. (2015). U-net: Convolutional networks for biomedical image segmentation. In Medical image computing and computer-assisted intervention–MICCAI 2015: 18th international conference, Munich, Germany, October 5-9, 2015, proceedings, part III 18 (pp. 234-241). Springer International Publishing.
-
-The project leverages the PanNuke dataset for nuclei segmentation, which is a diverse histological dataset spanning multiple cancer types.
+This repository serves as a playground for exploring the PanNuke dataset, offering an interactive web application that allows users to visualize segmentation results with diverse deep learning models and architectures. Whether you're a beginner eager to explore and experiment with segmentation or an experienced practitioner looking to dive into the PyTorch implementation of various segmentation and computer vision models, this project provides an easy-to-use training pipeline for training models from scratch.
 
 ## Features
 
-### Modified UNet Architecture:
-- Replaced transpose convolutions with bilinear interpolation to avoid checkerboard artifacts
-- Added batch normalization for improved training stability
-- Applied interpolation for odd input dimensions instead of cropping
+### Models
+- UNet (fully implemented Pytorch)
+- UNet++ (fully implemented Pytorch)
+- ResNet/UNet (fully implemented Pytorch - scratch)
+- ResNet/Unet (Pretrained ResNet + Implemented UNet decoder Pytorch)
 
 ### Training Pipeline:
 Complete pipeline for training and evaluation.
@@ -55,16 +46,6 @@ Key Details:
 - Over 7,000 patches of size 256x256
 - Includes images, masks (6-channel instance-wise masks for nuclei types), and tissue type annotations
 - Unified nuclei categorization schema (e.g., Neoplastic, Inflammatory, Connective/Soft Tissue Cells, Dead Cells, Epithelial, Background)
-
-## Model Architecture
-
-This project uses a modified version of the UNet architecture. Key differences from the original implementation include:
-
-- Bilinear Interpolation: Replacing transpose convolution layers to prevent checkerboard artifacts
-- Batch Normalization: Improving gradient flow and model convergence
-- Dynamic Input Handling: Adjustments to handle odd input dimensions without cropping
-
-The architecture remains highly interpretable and effective for biomedical image segmentation tasks.
 
 ## Installation
 
@@ -98,7 +79,6 @@ Open the URL displayed in the terminal to access the app.
 ## Future Plans
 
 This project will receive future updates, including:
-- Improved training and hyperparameter tuning
 - Extending the pipeline to support:
   - Class segmentation
   - Instance segmentation
@@ -110,6 +90,8 @@ This project will receive future updates, including:
 1. Ronneberger, O., Fischer, P., & Brox, T. (2015). U-net: Convolutional networks for biomedical image segmentation. In MICCAI 2015: Proceedings, Part III (pp. 234-241). Springer.
 
 2. Gamper, J., Alemi Koohbanani, N., Benet, K., Khuram, A., & Rajpoot, N. (2019). Pannuke: an open pan-cancer histology dataset for nuclei instance segmentation and classification. In ECDP 2019: Proceedings (pp. 11-19). Springer.
+
+3. Zhou, Z., Rahman Siddiquee, M. M., Tajbakhsh, N., & Liang, J. (2018). Unet++: A nested u-net architecture for medical image segmentation. In Deep Learning in Medical Image Analysis and Multimodal Learning for Clinical Decision Support: 4th International Workshop, DLMIA 2018, and 8th International Workshop, ML-CDS 2018, Held in Conjunction with MICCAI 2018, Granada, Spain, September 20, 2018, Proceedings 4 (pp. 3-11). Springer International Publishing.
 
 ## License
 
