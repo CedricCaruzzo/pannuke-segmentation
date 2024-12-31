@@ -5,7 +5,12 @@ from tqdm import tqdm
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from src.models.UNetpp import UNetPlusPlus  # Updated import
+
+# from src.models.UNet import UNet
+# from src.models.UNetpp import UNetPlusPlus  # Change this line to use UNet++ instead
+from src.models.ResNetUNet_pt import get_model_and_optimizer, unfreeze_encoder
+from src.models.ResNetUNet import ResNetUNet
+
 from src.datasets.dataset import PanNukeDataset
 from src.utils.utils import save_checkpoint, load_checkpoint, check_accuracy, save_predictions_as_imgs
 from torch.utils.data import DataLoader
@@ -65,11 +70,14 @@ BATCH_SIZE = 8
 NUM_EPOCHS = 10
 IMAGE_HEIGHT = 256
 IMAGE_WIDTH = 256
+IN_CHANNELS = 3
+OUT_CHANNELS = 1
+FEATURES = [64, 128, 256, 512]
 LOAD_MODEL = False
 ROOT_DIR = 'data/raw/folds'
 TRAIN_FOLD = 1
 VAL_FOLD = 2
-DEEP_SUPERVISION = True  # New parameter for UNet++
+DEEP_SUPERVISION = True  # parameter for UNet++
 
 def train_fn(loader, model, optimizer, loss_fn, scaler):
     loop = tqdm(loader)
@@ -101,20 +109,22 @@ def main():
     )
     
     if LOAD_MODEL:
-        model = UNetPlusPlus(
-            in_channels=3, 
-            out_channels=1,
-            features=[64, 128, 256, 512],
-            deep_supervision=DEEP_SUPERVISION
+        model = ResNetUNet(
+            in_channels=IN_CHANNELS,
+            out_channels=OUT_CHANNELS,
+            features=FEATURES,
+            # deep_supervision=DEEP_SUPERVISION # Change this line to use UNet++ instead
         ).to(DEVICE)
-        load_checkpoint('checkpoints/checkpoint.pth', model)
+        # model, optimizer = get_model_and_optimizer(device=DEVICE, out_channels=OUT_CHANNELS, learning_rate=LEARNING_RATE) # Change this line to use ResNetUNet instead
+        load_checkpoint('checkpoints/UNet/checkpoint.pth', model)
     else:
-        model = UNetPlusPlus(
-            in_channels=3, 
-            out_channels=1,
-            features=[64, 128, 256, 512],
-            deep_supervision=DEEP_SUPERVISION
+        model = ResNetUNet(
+            in_channels=IN_CHANNELS,
+            out_channels=OUT_CHANNELS,
+            features=FEATURES,
+            # deep_supervision=DEEP_SUPERVISION # Change this line to use UNet++ instead
         ).to(DEVICE)
+        # model, optimizer = get_model_and_optimizer(device=DEVICE, out_channels=OUT_CHANNELS, learning_rate=LEARNING_RATE) # Change this line to use ResNetUNet instead
     
     optimizer = optim.AdamW(
         model.parameters(),
@@ -132,18 +142,22 @@ def main():
     
     scaler = torch.cuda.amp.GradScaler()
     for epoch in range(NUM_EPOCHS):
+
+        # if unfreeze_encoder(model, epoch, unfreeze_epoch=3): # Change this line to use ResNetUNet instead
+        #     for param_group in optimizer.param_groups:
+        #         param_group['lr'] *= 0.1
+
         train_fn(dataloader, model, optimizer, loss_fn, scaler)
         
         checkpoint = {
             "state_dict": model.state_dict(),
             "optimizer": optimizer.state_dict()
         }
-        save_checkpoint(checkpoint, filename=f'checkpoints/checkpoint_{epoch}.pth')
+        save_checkpoint(checkpoint, filename=f'checkpoints/ResNetUNet/checkpoint_{epoch}.pth')
         
         # check_accuracy(val_dataloader, model, device=DEVICE)
         
-        # During validation/testing, we only use the final output
-        save_predictions_as_imgs(val_dataloader, model, epoch=epoch, folder='results/UNet++/', device=DEVICE)
+        save_predictions_as_imgs(val_dataloader, model, epoch=epoch, folder='results/ResNetUNet/', device=DEVICE)
 
 if __name__ == '__main__':
     main()

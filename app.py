@@ -12,6 +12,8 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from src.models.UNet import UNet
 from src.models.UNetpp import UNetPlusPlus
+from src.models.ResNetUNet import ResNetUNet
+from src.models.ResNetUNet_pt import ResNetUNet_pt
 from src.utils.utils import load_checkpoint
 
 # Set device
@@ -37,6 +39,22 @@ MODEL_CONFIGS = {
             "out_channels": 1,
             "features": [64, 128, 256, 512],
             "deep_supervision": False  # Set to False for inference
+        }
+    },
+    "ResNetUnet": {
+        "class": ResNetUNet,
+        "checkpoint_dir": "checkpoints/ResNetUNet/",
+        "params": {
+            "in_channels": 3, 
+            "out_channels": 1,
+            "features": [64, 128, 256, 512]
+        }
+    },
+    "ResNetUnet_pt": {
+        "class": ResNetUNet_pt,
+        "checkpoint_dir": "checkpoints/ResNetUNet_pt/",
+        "params": {
+            "out_channels": 1,
         }
     }
 }
