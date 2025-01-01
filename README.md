@@ -55,7 +55,7 @@ Key Details:
 
 Clone the repository:
 ```bash
-git clone https://github.com/CedricCaruzzo/pannuke-segmentation/.git
+git clone https://github.com/CedricCaruzzo/pannuke-segmentation
 cd pannuke-segmentation
 ```
 
