@@ -63,7 +63,7 @@ Create a virtual environment and install dependencies:
 ```bash
 python -m venv venv
 source venv/bin/activate   # On Windows, use `venv\Scripts\activate`
-pip install -r requirements.yaml
+pip install -r environment.yaml
 ```
 
 Download the PanNuke dataset (link in the Dataset section) and place it in the `data/` directory.
