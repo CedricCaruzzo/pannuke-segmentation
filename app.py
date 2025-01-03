@@ -14,6 +14,7 @@ from src.models.UNet import UNet
 from src.models.UNetpp import UNetPlusPlus
 from src.models.ResNetUNet import ResNetUNet
 from src.models.ResNetUNet_pt import ResNetUNet_pt
+from src.models.DeepLabV3p import DeepLabV3Plus
 from src.utils.utils import load_checkpoint
 
 # Set device
@@ -56,7 +57,15 @@ MODEL_CONFIGS = {
         "params": {
             "out_channels": 1,
         }
-    }
+    },
+    "DeepLabV3Plus": {
+        "class": DeepLabV3Plus,
+        "checkpoint_dir": "checkpoints/DeepLabV3+/",
+        "params": {
+            "in_channels": 3,
+            "out_channels": 1,
+        }
+    },
 }
 
 # Get tissue types
