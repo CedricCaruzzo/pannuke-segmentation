@@ -126,10 +126,11 @@ def save_predictions_as_imgs(loader, model, epoch, mod=50, folder='results/', de
                     os.makedirs(path)
             
             # Save images
-            make_folder(f"{folder}pred/epoch_{epoch}/")
-            torchvision.utils.save_image(preds, f"{folder}pred/epoch_{epoch}/pred_{idx}.jpg")
-            make_folder(f"{folder}true/epoch_{epoch}/")
-            torchvision.utils.save_image(y, f"{folder}true/epoch_{epoch}/true_{idx}.jpg")
+            if epoch == 0:
+                make_folder(f"{folder}pred/epoch_{epoch}/")
+                torchvision.utils.save_image(preds, f"{folder}pred/epoch_{epoch}/pred_{idx}.jpg")
+                make_folder(f"{folder}true/epoch_{epoch}/")
+                torchvision.utils.save_image(y, f"{folder}true/epoch_{epoch}/true_{idx}.jpg")
             make_folder(f"{folder}image/epoch_{epoch}/")
             torchvision.utils.save_image(x, f"{folder}image/epoch_{epoch}/image{idx}.jpg")
             
